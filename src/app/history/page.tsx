@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import NavBar from "@/components/NavBar";
 import HistoryTable, { type HistoryRow } from "@/components/HistoryTable";
+import AddEntryDialog from "@/components/AddEntryDialog";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,12 @@ export default async function HistoryPage() {
 
   const userId = session.user.id;
 
-  const [water, heartRate, bloodPressure, symptoms] = await Promise.all([
+  const [water, heartRate, bloodPressure, symptoms, symptomOptions] = await Promise.all([
     prisma.waterEntry.findMany({ where: { userId }, orderBy: { loggedAt: "desc" }, take: 1000 }),
     prisma.heartRateEntry.findMany({ where: { userId }, orderBy: { loggedAt: "desc" }, take: 1000 }),
     prisma.bloodPressureEntry.findMany({ where: { userId }, orderBy: { loggedAt: "desc" }, take: 1000 }),
     prisma.symptomEntry.findMany({ where: { userId }, orderBy: { loggedAt: "desc" }, take: 1000 }),
+    prisma.symptomOption.findMany({ where: { userId }, orderBy: { lastUsedAt: "desc" }, take: 50 }),
   ]);
 
   const rows: HistoryRow[] = [
@@ -59,10 +61,15 @@ export default async function HistoryPage() {
     <>
       <NavBar userName={session.user.name ?? ""} />
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <h1 className="mb-1 text-2xl font-semibold tracking-tight">History</h1>
-        <p className="mb-8 text-black/50 dark:text-white/50">
-          Every entry you&apos;ve logged, searchable and ready to share with a provider.
-        </p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="mb-1 text-2xl font-semibold tracking-tight">History</h1>
+            <p className="text-black/50 dark:text-white/50">
+              Every entry you&apos;ve logged, searchable and ready to share with a provider.
+            </p>
+          </div>
+          <AddEntryDialog symptomOptions={symptomOptions.map((o) => ({ id: o.id, label: o.label }))} />
+        </div>
         <HistoryTable rows={rows} />
       </main>
     </>

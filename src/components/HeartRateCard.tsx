@@ -6,10 +6,8 @@ import { addHeartRateEntry } from "@/lib/actions";
 
 type Entry = { id: string; bpm: number; loggedAt: string };
 
-const BPM_OPTIONS = Array.from({ length: 250 - 40 + 1 }, (_, i) => 40 + i);
-
 export default function HeartRateCard({ recentEntries }: { recentEntries: Entry[] }) {
-  const [bpm, setBpm] = useState(70);
+  const [bpm, setBpm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -18,9 +16,20 @@ export default function HeartRateCard({ recentEntries }: { recentEntries: Entry[
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+
+    const value = parseInt(bpm, 10);
+    if (!Number.isInteger(value) || value < 40 || value > 250) {
+      setError("Enter a heart rate between 40 and 250 bpm.");
+      return;
+    }
+
     startTransition(async () => {
-      const result = await addHeartRateEntry(bpm);
-      if (!result.ok) setError(result.error);
+      const result = await addHeartRateEntry(value);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setBpm("");
     });
   }
 
@@ -32,17 +41,16 @@ export default function HeartRateCard({ recentEntries }: { recentEntries: Entry[
       </div>
 
       <form onSubmit={handleSubmit} className="flex gap-2">
-        <select
+        <input
+          type="number"
+          inputMode="numeric"
+          min={40}
+          max={250}
           value={bpm}
-          onChange={(e) => setBpm(Number(e.target.value))}
+          onChange={(e) => setBpm(e.target.value)}
+          placeholder="e.g. 72"
           className="w-full rounded-xl border border-black/10 bg-canvas px-3.5 py-2.5 text-sm outline-none ring-accent/40 focus:ring-2 dark:border-white/10 dark:bg-black/30"
-        >
-          {BPM_OPTIONS.map((value) => (
-            <option key={value} value={value}>
-              {value} bpm
-            </option>
-          ))}
-        </select>
+        />
         <button
           type="submit"
           disabled={isPending}

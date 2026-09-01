@@ -23,24 +23,32 @@ export default async function HistoryPage() {
   const rows: HistoryRow[] = [
     ...water.map((e) => ({
       id: `water-${e.id}`,
+      rawId: e.id,
+      entryType: "water" as const,
       type: "Water" as const,
       summary: `${e.amountOz} oz`,
       loggedAt: e.loggedAt.toISOString(),
     })),
     ...heartRate.map((e) => ({
       id: `hr-${e.id}`,
+      rawId: e.id,
+      entryType: "heartrate" as const,
       type: "Heart Rate" as const,
       summary: `${e.bpm} bpm`,
       loggedAt: e.loggedAt.toISOString(),
     })),
     ...bloodPressure.map((e) => ({
       id: `bp-${e.id}`,
+      rawId: e.id,
+      entryType: "bloodpressure" as const,
       type: "Blood Pressure" as const,
       summary: e.rawText,
       loggedAt: e.loggedAt.toISOString(),
     })),
     ...symptoms.map((e) => ({
       id: `sym-${e.id}`,
+      rawId: e.id,
+      entryType: "symptom" as const,
       type: "Symptom" as const,
       summary: e.text,
       loggedAt: e.loggedAt.toISOString(),

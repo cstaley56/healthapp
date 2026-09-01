@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { deleteEntry, type EntryType } from "@/lib/actions";
 
 export type HistoryRow = {
   id: string;
+  rawId: string;
+  entryType: EntryType;
   type: "Water" | "Heart Rate" | "Blood Pressure" | "Symptom";
   summary: string;
   loggedAt: string;
@@ -31,6 +34,9 @@ export default function HistoryTable({ rows }: { rows: HistoryRow[] }) {
   const [typeFilter, setTypeFilter] = useState<(typeof TYPES)[number]>("All");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -46,6 +52,23 @@ export default function HistoryTable({ rows }: { rows: HistoryRow[] }) {
       return true;
     });
   }, [rows, query, typeFilter, from, to]);
+
+  function handleDelete(row: HistoryRow) {
+    const confirmed = window.confirm(
+      `Delete this entry?\n\n${row.type} — ${row.summary}\n\nThis can't be undone.`
+    );
+    if (!confirmed) return;
+
+    setDeleteError(null);
+    setDeletingId(row.id);
+    startTransition(async () => {
+      const result = await deleteEntry(row.entryType, row.rawId);
+      setDeletingId(null);
+      if (!result.ok) {
+        setDeleteError(result.error);
+      }
+    });
+  }
 
   function handleExport() {
     const csv = toCsv(filtered);
@@ -105,6 +128,8 @@ export default function HistoryTable({ rows }: { rows: HistoryRow[] }) {
         </button>
       </div>
 
+      {deleteError && <p className="mb-3 text-sm text-red-500">{deleteError}</p>}
+
       <div className="overflow-hidden rounded-2xl border border-black/5 dark:border-white/10">
         <table className="w-full text-sm">
           <thead>
@@ -112,12 +137,15 @@ export default function HistoryTable({ rows }: { rows: HistoryRow[] }) {
               <th className="px-4 py-3 font-medium">Date &amp; time</th>
               <th className="px-4 py-3 font-medium">Type</th>
               <th className="px-4 py-3 font-medium">Value</th>
+              <th className="px-4 py-3 font-medium">
+                <span className="sr-only">Delete</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-4 py-10 text-center text-black/40 dark:text-white/40">
+                <td colSpan={4} className="px-4 py-10 text-center text-black/40 dark:text-white/40">
                   No entries match.
                 </td>
               </tr>
@@ -136,6 +164,16 @@ export default function HistoryTable({ rows }: { rows: HistoryRow[] }) {
                   </span>
                 </td>
                 <td className="px-4 py-3">{row.summary}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right">
+                  <button
+                    onClick={() => handleDelete(row)}
+                    disabled={isPending && deletingId === row.id}
+                    aria-label={`Delete ${row.type} entry`}
+                    className="text-black/30 transition-colors hover:text-red-500 disabled:opacity-30 dark:text-white/30"
+                  >
+                    {isPending && deletingId === row.id ? "…" : "Delete"}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

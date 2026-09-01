@@ -91,3 +91,35 @@ export async function addSymptomEntry(text: string): Promise<ActionResult> {
   refresh();
   return { ok: true };
 }
+
+export type EntryType = "water" | "heartrate" | "bloodpressure" | "symptom";
+
+export async function deleteEntry(type: EntryType, id: string): Promise<ActionResult> {
+  const userId = await requireUserId();
+  if (!userId) return { ok: false, error: "Not signed in." };
+
+  if (!id) return { ok: false, error: "Missing entry." };
+
+  // deleteMany (instead of delete) scoped to both id AND userId means someone
+  // can never delete another person's entry, even by guessing/crafting an id.
+  let count = 0;
+  switch (type) {
+    case "water":
+      ({ count } = await prisma.waterEntry.deleteMany({ where: { id, userId } }));
+      break;
+    case "heartrate":
+      ({ count } = await prisma.heartRateEntry.deleteMany({ where: { id, userId } }));
+      break;
+    case "bloodpressure":
+      ({ count } = await prisma.bloodPressureEntry.deleteMany({ where: { id, userId } }));
+      break;
+    case "symptom":
+      ({ count } = await prisma.symptomEntry.deleteMany({ where: { id, userId } }));
+      break;
+  }
+
+  if (count === 0) return { ok: false, error: "That entry is gone already." };
+
+  refresh();
+  return { ok: true };
+}

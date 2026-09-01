@@ -1,0 +1,90 @@
+// Prisma schema for the family health tracker.
+// Uses Supabase Postgres: a pooled connection for the app (DATABASE_URL)
+// and a direct connection for migrations (DIRECT_URL).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  pinHash   String
+  createdAt DateTime @default(now())
+
+  waterEntries         WaterEntry[]
+  heartRateEntries     HeartRateEntry[]
+  bloodPressureEntries BloodPressureEntry[]
+  symptomEntries       SymptomEntry[]
+  symptomOptions       SymptomOption[]
+}
+
+model WaterEntry {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountOz Int
+  loggedAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
+}
+
+model HeartRateEntry {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bpm      Int
+  loggedAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
+}
+
+model BloodPressureEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rawText   String
+  systolic  Int?
+  diastolic Int?
+  loggedAt  DateTime @default(now())
+
+  @@index([userId, loggedAt])
+}
+
+// A per-user library of symptoms they've entered before. Powers the
+// "previous symptoms" dropdown and gets added to automatically whenever
+// someone types a new custom symptom.
+model SymptomOption {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label           String
+  normalizedLabel String
+  usageCount      Int      @default(1)
+  createdAt       DateTime @default(now())
+  lastUsedAt      DateTime @default(now())
+
+  entries SymptomEntry[]
+
+  @@unique([userId, normalizedLabel])
+}
+
+model SymptomEntry {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  optionId       String?
+  option         SymptomOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
+  text           String
+  normalizedText String
+  loggedAt       DateTime       @default(now())
+
+  @@index([userId, loggedAt])
+  @@index([userId, normalizedText])
+}
